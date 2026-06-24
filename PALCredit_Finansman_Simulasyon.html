@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finansman Hesaplama Aracı</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  background: #f0efe9;
+  min-height: 100vh;
+}
+.app-wrapper {
+  max-width: 1120px;
+  margin: 2rem auto;
+  background: #fff;
+  border-radius: 12px;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  overflow: hidden;
+}
+.app-header {
+  padding: 1rem 1.5rem 0;
+  border-bottom: 0.5px solid rgba(0,0,0,0.1);
+  background: #fff;
+}
+.app-title { font-size: 15px; font-weight: 500; }
+.app-subtitle { font-size: 12px; color: #888; margin-top: 2px; }
+.tab-nav { display: flex; margin-top: 14px; }
+.tab-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  color: #888;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -0.5px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+.tab-btn.active { color: #1a1a1a; border-bottom-color: #1a1a1a; font-weight: 500; }
+.tab-btn:hover:not(.active) { color: #1a1a1a; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.panel-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #888; margin-bottom: 14px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: #888; }
+.field input, .field select {
+  padding: 7px 10px; font-size: 13px;
+  border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px;
+  background: #fff; color: #1a1a1a; outline: none;
+  font-family: inherit; width: 100%; transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color: rgba(0,0,0,0.4); }
+.field input.warn-border { border-color: #ba7517 !important; }
+.field-warn { font-size: 10px; color: #ba7517; margin-top: 2px; display: none; }
+.field-warn.show { display: block; }
+
+/* ── FINANSMAN ŞİRKETİ ── */
+.fin-tab { padding: 1.5rem; }
+.fin-intro {
+  margin-bottom: 1.5rem; padding: 11px 14px;
+  background: #f5f5f3; border-radius: 8px; border-left: 3px solid #1a1a1a;
+}
+.fin-intro p { font-size: 12px; color: #555; line-height: 1.6; }
+.fin-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+.fin-card {
+  background: #fff; border: 0.5px solid rgba(0,0,0,0.12);
+  border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.fin-card-title { font-size: 12px; font-weight: 500; color: #1a1a1a; }
+.fin-card-desc { font-size: 10px; color: #aaa; line-height: 1.4; margin-top: 2px; }
+.fin-card .field label { display: none; }
+.fin-card .field input { font-size: 16px; font-weight: 500; padding: 8px 10px; }
+.fin-card-unit { font-size: 10px; color: #aaa; text-align: right; }
+.fin-actions { display: flex; align-items: center; gap: 10px; margin-top: 1.25rem; }
+.fin-save-btn {
+  padding: 9px 26px; font-size: 13px; font-weight: 500;
+  background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+  cursor: pointer; font-family: inherit;
+}
+.fin-save-btn:hover { opacity: 0.8; }
+.fin-saved { font-size: 11px; color: #3b6d11; opacity: 0; transition: opacity 0.3s; }
+.fin-saved.show { opacity: 1; }
+
+/* ── HESAPLAMA ── */
+.main-grid { display: grid; grid-template-columns: 1fr 1fr; min-height: 540px; }
+.panel-inputs { padding: 1.25rem 1.5rem; border-right: 0.5px solid rgba(0,0,0,0.1); }
+.panel-outputs { padding: 1.25rem 1.5rem; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.field-row.solo { grid-template-columns: 1fr; }
+
+.customer-toggle {
+  display: flex; margin-bottom: 12px;
+  border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden;
+}
+.ct-btn {
+  flex: 1; padding: 8px; font-size: 12px; color: #888;
+  border: none; background: transparent; cursor: pointer;
+  font-family: inherit; border-right: 0.5px solid rgba(0,0,0,0.1);
+  transition: background 0.12s, color 0.12s;
+}
+.ct-btn:last-child { border-right: none; }
+.ct-btn.active { background: #1a1a1a; color: #fff; font-weight: 500; }
+.ct-btn:hover:not(.active) { background: #f5f5f3; color: #1a1a1a; }
+
+.tax-badges { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tax-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px;
+  background: #e6f1fb; color: #185fa5; border: 0.5px solid #b5d4f4;
+}
+.tax-badge.warn { background: #faeeda; color: #ba7517; border-color: #fac775; }
+.tax-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.calc-btn {
+  width: 100%; margin-top: 14px; padding: 9px; font-size: 13px; font-weight: 500;
+  background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+  cursor: pointer; font-family: inherit;
+}
+.calc-btn:hover { opacity: 0.8; }
+
+.output-section { margin-bottom: 14px; }
+.output-section-title {
+  font-size: 11px; font-weight: 500; color: #888; letter-spacing: 0.05em;
+  text-transform: uppercase; margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.1);
+}
+.mg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mg3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 8px; }
+.mg4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 8px; }
+.mc { background: #f5f5f3; border-radius: 8px; padding: 10px 12px; }
+.mc.hl { background: #e6f1fb; border: 2px solid #b5d4f4; }
+.ml { font-size: 10px; color: #888; line-height: 1.4; margin-bottom: 3px; }
+.ml.info { color: #185fa5; }
+.mv { font-size: 15px; font-weight: 500; }
+.mv.big { font-size: 18px; }
+.mv.info { color: #185fa5; }
+.divider { height: 0.5px; background: rgba(0,0,0,0.1); margin: 12px 0; }
+.no-result { color: #888; font-size: 13px; text-align: center; padding: 2rem 0; }
+
+/* ── ÖDEME PLANI ── */
+.payment-tab { padding: 1.25rem 1.5rem; }
+.payment-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; background: #f5f5f3; color: #888; border: 0.5px solid rgba(0,0,0,0.12); }
+.pill span { font-weight: 500; color: #1a1a1a; }
+.table-wrap { overflow-x: auto; }
+table.pt {
+  width: 100%; border-collapse: collapse; font-size: 12px; min-width: 720px;
+}
+table.pt th {
+  text-align: right; font-size: 11px; font-weight: 500; color: #888;
+  padding: 6px 8px; border-bottom: 0.5px solid rgba(0,0,0,0.1); white-space: nowrap;
+}
+table.pt th:first-child { text-align: left; }
+table.pt td { padding: 7px 8px; text-align: right; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
+table.pt td:first-child { text-align: left; font-weight: 500; }
+table.pt tr:last-child td { border-bottom: none; }
+table.pt tr.grace td { color: #ba7517; }
+table.pt tr:hover td { background: #fafaf8; }
+.bg { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #faeeda; color: #ba7517; font-weight: 500; }
+
+.field-hint-gray { font-size: 10px; color: #bbb; margin-top: 1px; }
+.tutar-row { margin-bottom: 10px; }
+.tutar-label-row { margin-bottom: 6px; }
+.tutar-or-label { font-size: 10px; color: #aaa; font-style: italic; }
+.mode-badge {
+  display: inline-block; margin-left: 5px;
+  font-size: 10px; font-weight: 500; font-style: normal;
+  color: #185fa5; vertical-align: middle;
+}
+.mode-badge.mode-b { color: #3b6d11; }
+.reverse-info {
+  margin-top: 7px; padding: 7px 12px;
+  background: #eaf3de; border-radius: 7px;
+  border-left: 3px solid #639922;
+  font-size: 11px; color: #3b6d11;
+  display: flex; align-items: center; gap: 6px;
+}
+.rev-icon { font-size: 13px; font-weight: 500; }
+
+.excel-btn {
+  display: inline-flex; align-items: center;
+  padding: 6px 14px; font-size: 12px; font-weight: 500;
+  background: #fff; color: #3b6d11;
+  border: 0.5px solid #639922; border-radius: 8px;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+.excel-btn:hover { background: #eaf3de; }
+.excel-btn:active { transform: scale(0.98); }
+
+.fark-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.fark-card { background: #eaf3de; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #639922; }
+.fark-card .ml { color: #3b6d11; }
+.fark-card .mv { color: #27500a; }
+.fark-card .mv.neg { color: #a32d2d; }
+.mc.bayi-pesin { background: #faeeda; border-left: 3px solid #ba7517; }
+.mc.bayi-pesin .ml { color: #854f0b; }
+.mc.bayi-pesin .mv { color: #633806; }
+
+@media(max-width:800px){
+  .main-grid{grid-template-columns:1fr}
+  .panel-inputs{border-right:none;border-bottom:0.5px solid rgba(0,0,0,0.1)}
+  .fin-grid{grid-template-columns:1fr 1fr}
+  .mg3{grid-template-columns:1fr 1fr}
+  .mg4{grid-template-columns:1fr 1fr}
+  #tab-gelir .fin-tab > div:first-child{grid-template-columns:1fr}
+}
+@media(max-width:480px){.fin-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+
+<div class="app-header">
+  <div>
+    <div class="app-title">Finansman Hesaplama Aracı</div>
+    <div class="app-subtitle">Bayi finansman modeli — baz &amp; indirimli taksit karşılaştırması &nbsp;·&nbsp; <span style="color:#639922;font-weight:500">v2</span></div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('sirket')">Finansman Şirketi</button>
+    <button class="tab-btn" onclick="switchTab('hesaplama')">Hesaplama</button>
+    <button class="tab-btn" onclick="switchTab('plan')">Ödeme Planı</button>
+    <button class="tab-btn" onclick="switchTab('gelir')">Gelir Özeti</button>
+  </div>
+</div>
+
+<!-- ── TAB 1: FİNANSMAN ŞİRKETİ ── -->
+<div id="tab-sirket" class="tab-content active">
+  <div class="fin-tab">
+    <div class="fin-intro">
+      <p>Simülasyon parametrelerini buraya girin. Taksit sayısı ve ödemesiz dönem bu limitleri aşamaz. Fonlama maliyeti Gelir Özeti sekmesinde otomatik kullanılır.</p>
+    </div>
+    <div class="fin-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="fin-card">
+        <div>
+          <div class="fin-card-title">Maks. Taksit Sayısı</div>
+          <div class="fin-card-desc">Hesaplamada girilebilecek maksimum ay sayısı</div>
+        </div>
+        <div class="field"><label>Taksit</label><input type="number" id="fin_taksit" value="36" step="1" min="1"></div>
+        <div class="fin-card-unit">ay</div>
+      </div>
+      <div class="fin-card">
+        <div>
+          <div class="fin-card-title">Maks. Ödemesiz Dönem</div>
+          <div class="fin-card-desc">Müşteriye tanınacak azami ödemesiz ay sayısı</div>
+        </div>
+        <div class="field"><label>Ödemesiz</label><input type="number" id="fin_odemesiz" value="3" step="1" min="0"></div>
+        <div class="fin-card-unit">ay</div>
+      </div>
+      <div class="fin-card">
+        <div>
+          <div class="fin-card-title">Fonlama Maliyeti</div>
+          <div class="fin-card-desc">Kullandırılan fonun yıllık maliyeti — Gelir Özeti'nde otomatik kullanılır</div>
+        </div>
+        <div class="field"><label>Maliyet</label><input type="number" id="fin_maliyet" value="35" step="0.5" min="0"></div>
+        <div class="fin-card-unit">% / yıl</div>
+      </div>
+    </div>
+    <div class="fin-actions">
+      <button class="fin-save-btn" onclick="saveFinParams()">Kaydet &amp; Uygula</button>
+      <span class="fin-saved" id="savedMsg">Parametreler uygulandı.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 2: HESAPLAMA ── -->
+<div id="tab-hesaplama" class="tab-content">
+  <div class="main-grid">
+    <div class="panel-inputs">
+
+      <div class="panel-label">Müşteri Tipi</div>
+      <div class="customer-toggle">
+        <button class="ct-btn active" id="ct_bireysel" onclick="setCustomerType('bireysel')">Bireysel Müşteri</button>
+        <button class="ct-btn" id="ct_tuzel" onclick="setCustomerType('tuzel')">Tüzel Müşteri</button>
+      </div>
+      <div class="tax-badges" id="taxBadges">
+        <div class="tax-badge"><div class="dot"></div>BSMV %5</div>
+        <div class="tax-badge warn" id="kkdfBadge"><div class="dot"></div>KKDF %15</div>
+      </div>
+
+      <div class="panel-label">Girdiler</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Kredi Başlangıç Tarihi</label>
+          <input type="date" id="islemTarihi" value="2026-03-02" oninput="onTarihChange()">
+        </div>
+        <div class="field">
+          <label>İlk Taksit Tarihi</label>
+          <input type="date" id="ilkTaksitTarihi" value="2026-04-02" oninput="onTarihChange()">
+          <span class="field-hint-gray" id="gunFarkHint">Aradaki gün: 31</span>
+        </div>
+      </div>
+
+      <div class="field-row solo">
+        <div class="field">
+          <label>Finansman Tutarı (₺)</label>
+          <input type="number" id="anaPara" value="100000" step="1000">
+          <span class="field-hint-gray">Müşteriye kullandırılacak tutar</span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Taksit Sayısı (Ay)</label>
+          <input type="number" id="taksitSayisi" value="12" min="1" oninput="validateField(this,'taksit')">
+          <span class="field-warn" id="warn_taksit"></span>
+        </div>
+        <div class="field">
+          <label>Ödemesiz Dönem (Ay)</label>
+          <input type="number" id="odemesizDonem" value="3" min="0" oninput="validateField(this,'odemesiz')">
+          <span class="field-warn" id="warn_odemesiz"></span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Yıllık Faiz Nominal (%)</label>
+          <input type="number" id="yillikFaiz" value="50" step="0.1" oninput="onYillikChange(this)">
+        </div>
+        <div class="field">
+          <label>Aylık Faiz (%)</label>
+          <input type="number" id="aylikFaiz" value="4.17" step="0.01" oninput="onAylikChange(this)">
+        </div>
+      </div>
+      <div class="field-row solo">
+        <div class="field">
+          <label>Komisyon Oranı (%)</label>
+          <input type="number" id="komisyonOrani" value="0" step="0.1" min="0">
+          <span class="field-hint-gray">Ana para üzerinden flat komisyon</span>
+        </div>
+      </div>
+
+      <button class="calc-btn" onclick="hesapla()">Hesapla</button>
+    </div>
+
+    <div class="panel-outputs">
+      <div class="panel-label">Çıktılar</div>
+      <div id="outputArea"><div class="no-result">Girdileri doldurup Hesapla butonuna tıklayın.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 3: ÖDEME PLANI ── -->
+<div id="tab-plan" class="tab-content">
+  <div class="payment-tab">
+    <div class="payment-header">
+      <div class="panel-label" style="margin-bottom:0">Müşteri Ödeme Planı</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="pills" id="summaryPills"></div>
+        <button class="excel-btn" onclick="exportExcel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Excel İndir
+        </button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="pt">
+        <thead>
+          <tr>
+            <th style="width:36px;text-align:left">Ay</th>
+            <th style="width:86px">Tarih</th>
+            <th style="width:36px">Gün</th>
+            <th>Ödeme (₺)</th>
+            <th>Anapara (₺)</th>
+            <th>Faiz Net (₺)</th>
+            <th>BSMV (₺)</th>
+            <th id="thKkdf">KKDF (₺)</th>
+            <th>Faiz+Vergi (₺)</th>
+            <th>Kalan Ana. (₺)</th>
+            <th>Durum</th>
+          </tr>
+        </thead>
+        <tbody id="planBody">
+          <tr><td colspan="11" style="text-align:center;padding:2rem;color:#888">Önce Hesaplama sekmesinden hesaplayın.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4: GELİR ÖZETİ ── -->
+<div id="tab-gelir" class="tab-content">
+  <div class="fin-tab">
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;margin-bottom:1.5rem">
+      <div>
+        <div class="panel-label">İşlem Özeti</div>
+        <div id="gelirIslemOzet" style="font-size:12px;color:#888;padding:.5rem 0">Önce Hesaplama sekmesinden hesaplayın.</div>
+      </div>
+      <div>
+        <div class="panel-label">Fonlama Maliyeti</div>
+        <div style="font-size:12px;color:#888;padding:.5rem 0">Finansman Şirketi sekmesindeki <strong>Fonlama Maliyeti</strong> değeri kullanılıyor. Değiştirmek için o sekmeyi güncelleyin ve Kaydet &amp; Uygula'ya basın.</div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-label">Gelir Analizi</div>
+      <div id="gelirCards"><div class="no-result">Önce Hesaplama sekmesinden hesaplayın.</div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app-wrapper -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const BASIS = 360;
+const BSMV  = 0.05;
+const KKDF  = 0.15;
+
+const fin = { taksit: 36, odemesiz: 3, maliyet: 35 };
+let customerType = 'bireysel';
+let lastResult   = null;
+
+/* ── TAB SWITCH ── */
+function switchTab(name) {
+  ['sirket','hesaplama','plan','gelir'].forEach((t,i) => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+    document.querySelectorAll('.tab-btn')[i].classList.toggle('active', t===name);
+  });
+  if (name==='hesaplama') syncConstraints();
+  if (name==='gelir') renderGelir();
+}
+
+/* ── FİN PARAMS SAVE ── */
+function saveFinParams() {
+  fin.taksit   = parseInt(document.getElementById('fin_taksit').value)    || 36;
+  fin.odemesiz = parseInt(document.getElementById('fin_odemesiz').value)  || 3;
+  fin.maliyet  = parseFloat(document.getElementById('fin_maliyet').value) || 35;
+  syncConstraints();
+  const m = document.getElementById('savedMsg');
+  m.classList.add('show');
+  setTimeout(()=>m.classList.remove('show'), 2200);
+}
+
+function syncConstraints() {
+  const tEl = document.getElementById('taksitSayisi');
+  const oEl = document.getElementById('odemesizDonem');
+  if (parseInt(tEl.value)   > fin.taksit)   tEl.value = fin.taksit;
+  if (parseInt(oEl.value)   > fin.odemesiz) oEl.value = fin.odemesiz;
+  validateField(tEl,'taksit');
+  validateField(oEl,'odemesiz');
+}
+
+/* ── VALIDATION ── */
+function validateField(el, key) {
+  const v   = parseFloat(el.value);
+  const w   = document.getElementById('warn_'+key);
+  if (!w) return;
+  let msg = '', bad = false;
+  if (key==='taksit' && v > fin.taksit) {
+    msg = `Finansman şirketi limiti: ${fin.taksit} ay.`; bad = true;
+  }
+  if (key==='odemesiz' && v > fin.odemesiz) {
+    msg = `Maksimum ödemesiz dönem: ${fin.odemesiz} ay.`; bad = true;
+  }
+  w.textContent = msg;
+  w.classList.toggle('show', bad);
+  el.classList.toggle('warn-border', bad);
+}
+
+/* ── CUSTOMER TYPE ── */
+function setCustomerType(type) {
+  customerType = type;
+  document.getElementById('ct_bireysel').classList.toggle('active', type==='bireysel');
+  document.getElementById('ct_tuzel').classList.toggle('active', type==='tuzel');
+  document.getElementById('kkdfBadge').style.display = type==='bireysel' ? '' : 'none';
+  document.getElementById('thKkdf').style.display = type==='bireysel' ? '' : 'none';
+}
+
+/* ── HELPERS ── */
+function fmt(n) {
+  if (n===null||n===undefined||isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('tr-TR');
+}
+function pct(n) { return n.toFixed(2).replace('.',',')+'%'; }
+function addMonths(s, m) { const d=new Date(s); d.setMonth(d.getMonth()+m); return d; }
+function fmtDate(d) { return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function pmt(r, n, pv) {
+  if (r===0||n===0) return pv/(n||1);
+  return pv*r/(1-Math.pow(1+r,-n));
+}
+
+/* ── TARİH SYNC ── */
+function onTarihChange() {
+  const t1Str = document.getElementById('islemTarihi').value;
+  if (!t1Str) return;
+  const t1 = new Date(t1Str);
+
+  /* İlk taksit = kullandırım + 1 ay (sadece kullandırım değiştiğinde otomatik ayarla) */
+  const ilkEl = document.getElementById('ilkTaksitTarihi');
+  const autoDate = addMonths(t1Str, 1);
+  const autoStr  = autoDate.toISOString().slice(0, 10);
+  if (!ilkEl._userEdited) ilkEl.value = autoStr;
+
+  const t2 = new Date(ilkEl.value);
+  const gun = Math.round((t2 - t1) / 86400000);
+  const hint = document.getElementById('gunFarkHint');
+  if (!isNaN(gun)) hint.textContent = 'Aradaki gün: ' + gun;
+}
+
+/* İlk taksit manuel düzenlenirse flag set et */
+document.addEventListener('DOMContentLoaded', () => {
+  const ilkEl = document.getElementById('ilkTaksitTarihi');
+  ilkEl._userEdited = false;
+  ilkEl.addEventListener('input', () => { ilkEl._userEdited = true; });
+});
+
+/* ── FAİZ SYNC ── */
+function onYillikChange(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) {
+    document.getElementById('aylikFaiz').value = (v / 12).toFixed(4);
+  }
+}
+function onAylikChange(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) {
+    document.getElementById('yillikFaiz').value = (v * 12).toFixed(4);
+  }
+}
+
+
+/* ── HESAPLA ── */
+function hesapla() {
+  let   N        = parseInt(document.getElementById('taksitSayisi').value)    || 12;
+  let   grace    = parseInt(document.getElementById('odemesizDonem').value)   || 0;
+  let   rYil     = parseFloat(document.getElementById('yillikFaiz').value)    || 0;
+  const komisyon = parseFloat(document.getElementById('komisyonOrani').value) || 0;
+  const tarih    = document.getElementById('islemTarihi').value;
+  const ilkTarih = document.getElementById('ilkTaksitTarihi').value || tarih;
+
+  /* ilk taksit - başlangıç gün farkı */
+  const t0 = new Date(tarih), t1 = new Date(ilkTarih);
+  const ilkGunFark = Math.max(0, Math.round((t1 - t0) / 86400000));
+
+  /* enforce constraints */
+  if (N     > fin.taksit)   N     = fin.taksit;
+  if (grace > fin.odemesiz) grace = fin.odemesiz;
+  if (grace >= N) grace = Math.max(0, N-1);
+
+  const P = parseFloat(document.getElementById('anaPara').value) || 0;
+  if (!P || P <= 0) { alert('Geçerli bir Finansman Tutarı girin.'); return; }
+
+  const taxMult  = customerType==='bireysel' ? (1+BSMV+KKDF) : (1+BSMV);
+
+  /* ── FİNANSMAN HESABI ── */
+  const rBazAy  = rYil / 100 / 12;
+  const rBazG   = rBazAy * taxMult;
+  const payN    = N - grace;
+
+  let pvG = P;
+  for(let i=0;i<grace;i++) pvG *= (1+rBazG);
+  const pmtBase  = pmt(rBazG, payN, pvG);
+  const totBase  = pmtBase * payN;
+  const faizBrut = totBase - P;
+  const faizNet  = faizBrut / taxMult;
+  const bsmvTut  = faizNet * BSMV;
+  const kkdfTut  = customerType==='bireysel' ? faizNet*KKDF : 0;
+
+  const rEffBilesik = (Math.pow(1+rBazAy,12)-1)*100;
+  const komisyonTut = P * komisyon / 100;
+
+  lastResult = {
+    P, N, grace, payN,
+    pmtBase, totBase, faizNet, faizBrut, bsmvTut, kkdfTut,
+    rYil, rBazAy, rBazG, taxMult,
+    rEffBilesik, komisyon, komisyonTut,
+    tarih, ilkTarih, ilkGunFark
+  };
+
+  renderOutputs();
+  renderPlan();
+  document.getElementById('thKkdf').style.display = customerType==='bireysel' ? '' : 'none';
+}
+
+/* bisection solver */
+function bisect(fn, lo, hi, iters) {
+  for(let i=0;i<iters;i++){
+    const mid=(lo+hi)/2;
+    if(fn(mid)>0) hi=mid; else lo=mid;
+  }
+  return (lo+hi)/2;
+}
+
+/* ── OUTPUTS ── */
+function renderOutputs() {
+  const r = lastResult;
+  const isBir = customerType==='bireysel';
+  const kkdfCard = isBir
+    ? `<div class="mc"><div class="ml">KKDF (%15)</div><div class="mv">${fmt(r.kkdfTut)} ₺</div></div>`
+    : '';
+  const gridCls = isBir ? 'mg4' : 'mg3';
+
+  document.getElementById('outputArea').innerHTML = `
+    <div class="output-section">
+      <div class="output-section-title">Finansman Özeti</div>
+      <div class="mg3">
+        <div class="mc hl"><div class="ml info">Aylık Taksit</div><div class="mv info big">${fmt(r.pmtBase)} ₺</div></div>
+        <div class="mc hl"><div class="ml info">Toplam Ödenen</div><div class="mv info big">${fmt(r.totBase)} ₺</div></div>
+        <div class="mc"><div class="ml">Toplam Faiz (Brüt)</div><div class="mv">${fmt(r.faizBrut)} ₺</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="output-section">
+      <div class="output-section-title">Faiz & Vergi Dağılımı</div>
+      <div class="${gridCls}" style="margin-top:4px">
+        <div class="mc"><div class="ml">Faiz Net</div><div class="mv">${fmt(r.faizNet)} ₺</div></div>
+        <div class="mc"><div class="ml">BSMV (%5)</div><div class="mv">${fmt(r.bsmvTut)} ₺</div></div>
+        ${kkdfCard}
+        ${r.komisyonTut > 0 ? `<div class="mc"><div class="ml">Komisyon</div><div class="mv">${fmt(r.komisyonTut)} ₺</div></div>` : ''}
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="output-section">
+      <div class="output-section-title">Faiz Oranları</div>
+      <div class="mg3">
+        <div class="mc"><div class="ml">Nominal Yıllık</div><div class="mv">${pct(r.rYil)}</div></div>
+        <div class="mc"><div class="ml">Nominal Aylık</div><div class="mv">${pct(r.rBazAy*100)}</div></div>
+        <div class="mc" style="background:#eaf3de;border-left:3px solid #639922">
+          <div class="ml" style="color:#3b6d11">Efektif Yıllık (Bileşik)</div>
+          <div class="mv" style="color:#27500a;font-size:17px">${pct(r.rEffBilesik)}</div>
+          <div style="font-size:10px;color:#3b6d11;margin-top:2px">Müşterinin gerçek yıllık maliyeti</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ── ÖDEME PLANI ── */
+function renderPlan() {
+  const r = lastResult;
+  const isBir = customerType==='bireysel';
+  const tbody = document.getElementById('planBody');
+  const rows  = [];
+  let kalan = r.P;
+  const rNetAy = r.rBazG / r.taxMult;   /* = rBazAy */
+
+  const ilkTarihStr = r.ilkTarih || r.tarih;
+
+  for(let i=1; i<=r.N; i++) {
+    const curDate  = i===1 ? new Date(ilkTarihStr) : addMonths(ilkTarihStr, i-1);
+    const prevDate = i===1 ? new Date(r.tarih)     : addMonths(ilkTarihStr, i-2);
+    const gun = Math.round((curDate - prevDate) / 86400000);
+    const isGrace = i <= r.grace;
+
+    let odeme=0, anapara=0, faizNet=0, bsmvR=0, kkdfR=0, toplamVergi=0;
+
+    faizNet = kalan * rNetAy * (gun/(BASIS/12));
+    bsmvR   = faizNet * BSMV;
+    kkdfR   = isBir ? faizNet*KKDF : 0;
+    toplamVergi = faizNet + bsmvR + kkdfR;
+
+    if(!isGrace) {
+      if(i === r.N) {
+        anapara = kalan;
+        odeme   = anapara + toplamVergi;
+        kalan   = 0;
+      } else {
+        odeme   = r.pmtBase;
+        anapara = odeme - toplamVergi;
+        kalan   = Math.max(0, kalan - anapara);
+      }
+    } else {
+      kalan  += toplamVergi;
+    }
+
+    const kkdfCell = isBir ? `<td>${fmt(kkdfR)}</td>` : `<td style="display:none"></td>`;
+    const tr = document.createElement('tr');
+    if(isGrace) tr.classList.add('grace');
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td style="text-align:right">${fmtDate(curDate)}</td>
+      <td>${gun}</td>
+      <td>${isGrace ? '<span class="bg">ödemesiz</span>' : fmt(odeme)}</td>
+      <td>${isGrace ? '—' : fmt(anapara)}</td>
+      <td>${fmt(faizNet)}</td>
+      <td>${fmt(bsmvR)}</td>
+      ${kkdfCell}
+      <td>${fmt(toplamVergi)}</td>
+      <td>${fmt(Math.max(0,kalan))}</td>
+      <td>${isGrace ? '<span class="bg">Ödemesiz</span>' : ''}</td>`;
+    rows.push(tr);
+  }
+
+  tbody.innerHTML='';
+  rows.forEach(row=>tbody.appendChild(row));
+
+  const label = isBir ? 'Bireysel · BSMV+KKDF' : 'Tüzel · BSMV';
+  document.getElementById('summaryPills').innerHTML = `
+    <div class="pill">${r.N} Taksit &middot; <span>${r.grace} Ödemesiz</span></div>
+    <div class="pill">Aylık <span>${fmt(r.pmtBase)} ₺</span></div>
+    <div class="pill">Toplam <span>${fmt(r.totBase)} ₺</span></div>
+    <div class="pill">İlk Taksit <span>${new Date(ilkTarihStr).toLocaleDateString('tr-TR')}</span></div>
+    <div class="pill"><span>${label}</span></div>`;
+}
+
+/* ── EXCEL EXPORT ── */
+function exportExcel() {
+  if (!lastResult) { alert('Önce Hesaplama sekmesinden hesaplayın.'); return; }
+
+  const r = lastResult;
+  const isBir = customerType === 'bireysel';
+  const tarihStr = new Date(r.tarih).toLocaleDateString('tr-TR');
+
+  /* ── Özet sayfası ── */
+  const ozet = [
+    ['PALCREDİT FİNANSMAN HESAPLAMA', '', '', ''],
+    ['Hesaplama Tarihi', new Date().toLocaleDateString('tr-TR'), '', ''],
+    ['', '', '', ''],
+    ['── GİRDİLER ──', '', '', ''],
+    ['İşlem Tarihi', tarihStr, '', ''],
+    ['Finansman Tutarı (₺)', r.P, '', ''],
+    ['Taksit Sayısı (Ay)', r.N, '', ''],
+    ['Ödemesiz Dönem (Ay)', r.grace, '', ''],
+    ['Yıllık Faiz Nominal (%)', r.rYil, '', ''],
+    ['Aylık Faiz Nominal (%)', parseFloat((r.rBazAy * 100).toFixed(4)), '', ''],
+    ['Müşteri Tipi', isBir ? 'Bireysel' : 'Tüzel', '', ''],
+    ['BSMV (%)', 5, '', ''],
+    ['KKDF (%)', isBir ? 15 : 0, '', ''],
+    ['Komisyon Oranı (%)', r.komisyon, '', ''],
+    ['', '', '', ''],
+    ['── FİNANSMAN SONUÇLARI ──', '', '', ''],
+    ['Aylık Taksit (₺)', Math.round(r.pmtBase), '', ''],
+    ['Toplam Ödenen (₺)', Math.round(r.totBase), '', ''],
+    ['Toplam Faiz Brüt (₺)', Math.round(r.faizBrut), '', ''],
+    ['Faiz Net (₺)', Math.round(r.faizNet), '', ''],
+    ['BSMV Tutarı (₺)', Math.round(r.bsmvTut), '', ''],
+    isBir ? ['KKDF Tutarı (₺)', Math.round(r.kkdfTut), '', ''] : null,
+    r.komisyonTut > 0 ? ['Komisyon Tutarı (₺)', Math.round(r.komisyonTut), '', ''] : null,
+    ['', '', '', ''],
+    ['── FAİZ ORANLARI ──', '', '', ''],
+    ['Nominal Yıllık Faiz (%)', r.rYil, '', ''],
+    ['Efektif Yıllık Faiz / Bileşik (%)', parseFloat(r.rEffBilesik.toFixed(2)), '', ''],
+  ].filter(Boolean);
+
+  /* ── Ödeme Planı sayfası ── */
+  const headers = ['Ay', 'Tarih', 'Gün', 'Ödeme (₺)', 'Anapara (₺)', 'Faiz Net (₺)', 'BSMV (₺)'];
+  if (isBir) headers.push('KKDF (₺)');
+  headers.push('Toplam Vergi (₺)', 'Kalan Anapara (₺)', 'Durum');
+
+  const planRows = [headers];
+  let kalan = r.P;
+  const rNetAy = r.rBazAy;
+  const ilkTarihStrXL = r.ilkTarih || r.tarih;
+
+  for (let i = 1; i <= r.N; i++) {
+    const curDate  = i===1 ? new Date(ilkTarihStrXL) : addMonths(ilkTarihStrXL, i-1);
+    const prevDate = i===1 ? new Date(r.tarih)        : addMonths(ilkTarihStrXL, i-2);
+    const gun = Math.round((curDate - prevDate) / 86400000);
+    const isGrace = i <= r.grace;
+
+    let odeme = 0, anapara = 0, faizNet = 0, bsmvR = 0, kkdfR = 0, toplamVergi = 0;
+    faizNet = kalan * rNetAy * (gun / (BASIS / 12));
+    bsmvR = faizNet * BSMV;
+    kkdfR = isBir ? faizNet * KKDF : 0;
+    toplamVergi = faizNet + bsmvR + kkdfR;
+
+    if (!isGrace) {
+      if(i === r.N) {
+        anapara = kalan;
+        odeme   = anapara + toplamVergi;
+        kalan   = 0;
+      } else {
+        odeme = r.pmtBase;
+        anapara = odeme - toplamVergi;
+        kalan = Math.max(0, kalan - anapara);
+      }
+    } else {
+      kalan += toplamVergi;
+    }
+
+    const tarihFormatted = curDate.toLocaleDateString('tr-TR');
+    const row = [
+      i,
+      tarihFormatted,
+      gun,
+      isGrace ? 0 : Math.round(odeme),
+      isGrace ? 0 : Math.round(anapara),
+      Math.round(faizNet),
+      Math.round(bsmvR),
+    ];
+    if (isBir) row.push(Math.round(kkdfR));
+    row.push(Math.round(toplamVergi), Math.round(Math.max(0, kalan)), isGrace ? 'Ödemesiz' : '');
+    planRows.push(row);
+  }
+
+  /* Totals row */
+  const totRow = ['TOPLAM', '', '',
+    planRows.slice(1).reduce((s, rw) => s + (rw[3] || 0), 0),
+    planRows.slice(1).reduce((s, rw) => s + (rw[4] || 0), 0),
+    planRows.slice(1).reduce((s, rw) => s + (rw[5] || 0), 0),
+    planRows.slice(1).reduce((s, rw) => s + (rw[6] || 0), 0),
+  ];
+  if (isBir) totRow.push(planRows.slice(1).reduce((s, rw) => s + (rw[7] || 0), 0));
+  const vergiIdx = isBir ? 8 : 7;
+  totRow.push(planRows.slice(1).reduce((s, rw) => s + (rw[vergiIdx - 1] || 0), 0), '', '');
+  planRows.push(totRow);
+
+  /* Build workbook */
+  const wb = XLSX.utils.book_new();
+  const wsOzet = XLSX.utils.aoa_to_sheet(ozet);
+  const wsPlan = XLSX.utils.aoa_to_sheet(planRows);
+
+  /* Column widths for plan */
+  wsPlan['!cols'] = [
+    {wch:6},{wch:12},{wch:6},{wch:14},{wch:14},{wch:14},{wch:12},
+    ...(isBir ? [{wch:12}] : []),
+    {wch:16},{wch:16},{wch:10}
+  ];
+  wsOzet['!cols'] = [{wch:38},{wch:18}];
+
+  XLSX.utils.book_append_sheet(wb, wsOzet, 'Özet');
+  XLSX.utils.book_append_sheet(wb, wsPlan, 'Ödeme Planı');
+
+  const fname = `Finansman_OdemePlani_${r.tarih}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+/* ── GELİR ÖZETİ ── */
+function renderGelir() {
+  if (!lastResult) return;
+  const r   = lastResult;
+  const ftf = fin.maliyet;
+  const isBir = customerType === 'bireysel';
+
+  /* ── GELİRLER ── */
+  const faizGeliri  = r.faizNet;
+  const komisyonGelir = r.komisyonTut;
+  const toplamGelir = faizGeliri + komisyonGelir;
+
+  /* ── FONLAMA MALİYETİ ──
+     Grace dahil: ödemesiz dönemde bakiye büyür, sonra payN taksitte amorti. */
+  const rFtfAy = ftf / 100 / 12;
+  let pvGftf = r.P;
+  for(let i=0;i<r.grace;i++) pvGftf *= (1+rFtfAy);
+  const pmtFtf     = rFtfAy===0 ? pvGftf/r.payN : pvGftf * rFtfAy / (1-Math.pow(1+rFtfAy,-r.payN));
+  const ftfMaliyet = Math.max(0, pmtFtf * r.payN - r.P);
+
+  /* ── NET GELİR & SPREAD ── */
+  const netGelir   = toplamGelir - ftfMaliyet;
+  const spreadPuan = r.rYil - ftf;
+
+  /* ── IRR — plan simülasyonu üzerinden net nakit akışları ──
+     Her dönem şirketin gerçek net geliri: anapara_t + faizNet_t
+     (BSMV ve KKDF devlete/TCMB'ye aktarılır, şirketin kasasına girmez)
+     Grace=0 → IRR ≈ nominal faiz | Grace>0 → biraz yüksek (bileşik büyüme) */
+  {
+    let kalanIRR = r.P;
+    const cf = [-r.P + komisyonGelir];
+    for(let i=1; i<=r.N; i++){
+      const isGrace = i <= r.grace;
+      const faizGross = kalanIRR * r.rBazG;
+      const faizNetI  = faizGross / r.taxMult;
+      if(isGrace){
+        kalanIRR += faizGross;
+        cf.push(0);
+      } else {
+        const anapara = r.pmtBase - faizGross;
+        kalanIRR -= anapara;
+        cf.push(anapara + faizNetI);
+      }
+    }
+    var irrAylik = bisect(r2 => {
+      let npv = 0;
+      cf.forEach((c, t) => npv += c / Math.pow(1+r2, t));
+      return -npv;
+    }, 0.0001, 1.0, 100);
+  }
+  const irrYillik = irrAylik * 12 * 100;
+
+  document.getElementById('gelirIslemOzet').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:#888">Finansman Tutarı</span><span style="font-weight:500">${fmt(r.P)} ₺</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:#888">Vade</span><span style="font-weight:500">${r.N} ay${r.grace>0?' ('+r.grace+' ödemesiz)':''}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:#888">Uygulanan Faiz</span><span style="font-weight:500">%${r.rYil.toFixed(2)} nominal · %${r.rEffBilesik.toFixed(2)} efektif</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:#888">Fonlama Maliyeti</span><span style="font-weight:500">%${ftf}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:#888">Spread</span>
+        <span style="font-weight:500;color:${spreadPuan>=0?'#3b6d11':'#a32d2d'}">%${spreadPuan.toFixed(2)}</span>
+      </div>
+    </div>`;
+
+  const isNeg = netGelir < 0;
+  document.getElementById('gelirCards').innerHTML = `
+    <div class="${r.komisyonTut>0?'mg3':'mg2'}" style="margin-bottom:12px">
+      <div class="mc"><div class="ml">Faiz Geliri (Net, %${r.rYil})</div><div class="mv">${fmt(faizGeliri)} ₺</div></div>
+      ${r.komisyonTut>0?`<div class="mc"><div class="ml">Komisyon Geliri</div><div class="mv">${fmt(komisyonGelir)} ₺</div></div>`:''}
+      <div class="mc" style="background:#eaf3de;border-left:3px solid #639922">
+        <div class="ml" style="color:#3b6d11">Toplam Gelir</div>
+        <div class="mv" style="color:#27500a;font-size:18px">${fmt(toplamGelir)} ₺</div>
+      </div>
+    </div>
+    <div class="mg3" style="margin-bottom:12px">
+      <div class="mc" style="background:#fcebeb;border-left:3px solid #a32d2d">
+        <div class="ml" style="color:#a32d2d">Fonlama Maliyeti (%${ftf})</div>
+        <div class="mv" style="color:#791f1f;font-size:18px">${fmt(ftfMaliyet)} ₺</div>
+        <div style="font-size:10px;color:#a32d2d;margin-top:2px">PMT(%${ftf.toFixed(1)}/12, ${r.grace>0?r.payN+'ay ('+r.grace+'ö)':r.N+' ay'}, ${fmt(r.P)}) × ${r.payN} − ${fmt(r.P)}</div>
+      </div>
+      <div class="mc" style="background:${isNeg?'#fcebeb':'#eaf3de'};border-left:3px solid ${isNeg?'#a32d2d':'#639922'}">
+        <div class="ml" style="color:${isNeg?'#a32d2d':'#3b6d11'}">Net Gelir</div>
+        <div class="mv" style="color:${isNeg?'#791f1f':'#27500a'};font-size:18px">${fmt(netGelir)} ₺</div>
+        <div style="font-size:10px;color:${isNeg?'#a32d2d':'#3b6d11'};margin-top:2px">Toplam Gelir − Fonlama Maliyeti</div>
+      </div>
+      <div class="mc">
+        <div class="ml">Spread</div>
+        <div class="mv" style="color:${spreadPuan>=0?'#27500a':'#791f1f'}">${pct(spreadPuan)}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">%${r.rYil.toFixed(2)} − %${ftf}</div>
+      </div>
+    </div>
+    <div class="mg3">
+      <div class="mc" style="background:#e6f1fb;border-left:3px solid #185fa5">
+        <div class="ml" style="color:#185fa5">IRR (Yıllık, Net)</div>
+        <div class="mv" style="color:#0c447c;font-size:18px">${pct(irrYillik)}</div>
+        <div style="font-size:10px;color:#185fa5;margin-top:2px">Grace=0 → nominal faiz · Grace>0 → biraz yüksek</div>
+      </div>
+      <div class="mc">
+        <div class="ml">Getiri / Kullandırılan Fon</div>
+        <div class="mv">${pct(toplamGelir/r.P*100)}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">Brüt verim</div>
+      </div>
+      <div class="mc">
+        <div class="ml">Net Verim (Fonlama Sonrası)</div>
+        <div class="mv" style="color:${netGelir>=0?'#27500a':'#791f1f'}">${pct(netGelir/r.P*100)}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">Net gelir / kullandırım</div>
+      </div>
+    </div>
+    <div style="margin-top:20px;padding:16px;background:#f5f5f3;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1)">
+      <div style="font-size:11px;font-weight:500;color:#888;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px">Gösterge Açıklamaları</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px">
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Faiz Geliri</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Müşteriden tahsil edilen toplam faizin BSMV ve KKDF düşülmüş net tutarıdır. BSMV (%5) ve KKDF (%15, bireysel) devlete/TCMB'ye aktarıldığından şirketin kasasına giren gerçek faiz geliridir. <em>Toplam Ödeme − Anapara − BSMV − KKDF</em> olarak hesaplanır.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Fonlama Maliyeti</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Kullandırılan tutarı temin etmenin yıllık maliyetidir (Finansman Şirketi sekmesinden alınır). Ödemesiz dönem varsa bakiye o süre büyür, kalan taksit sayısında amorti edilir: <em>PMT(maliyet/12, ödeme_ayı, büyümüş_tutar) × ödeme_ayı − anapara.</em></span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Net Gelir</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Faiz Geliri eksi Fonlama Maliyetidir. Şirketin bu kredi işleminden elde ettiği gerçek kârı gösterir. Negatifse o faiz oranı ve vade kombinasyonu bu fonlama maliyetiyle kârsızdır.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Spread</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Uygulanan yıllık nominal faiz oranı ile fonlama maliyeti arasındaki puan farkıdır. <em>Kredi faizi − Fonlama maliyeti.</em> Spread ne kadar geniş olursa her kullandırım o kadar kârlı demektir.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">IRR (İç Verim Oranı)</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Şirketin kullandırdığı sermayeye yıllık net getirisini gösterir. Her dönem <em>anapara geri dönüşü + net faiz</em> nakit akışı baz alınır; BSMV/KKDF dahil edilmez. Ödemesiz dönem yoksa nominal faize eşittir; varsa biraz yüksek çıkar çünkü ödemesiz dönemde bakiye bileşik büyür.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Getiri / Kullandırılan Fon</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Toplam faiz gelirinin kullandırılan anaparaya oranıdır: <em>Faiz Geliri ÷ Anapara × 100.</em> Fonlama maliyeti gözetilmeksizin brüt verimi ifade eder; farklı vade ve tutarlar arasında kaba karşılaştırma için kullanılır.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:500;color:#1a1a1a">Net Verim</span>
+          <span style="font-size:11px;color:#666;line-height:1.5">Net Gelirin kullandırılan anaparaya oranıdır: <em>Net Gelir ÷ Anapara × 100.</em> Fonlama maliyeti düşüldükten sonra anaparaya göre gerçek kâr yüzdesidir. Bu oran pozitif kaldığı sürece işlem kârlıdır.</span>
+        </div>
+
+      </div>
+    </div>`;
+}
+
+/* init */
+setCustomerType('bireysel');
+const _initYil = parseFloat(document.getElementById('yillikFaiz').value) || 50;
+document.getElementById('aylikFaiz').value = (_initYil/12).toFixed(4);
+onTarihChange();
+hesapla();
+</script>
+</body>
+</html>
